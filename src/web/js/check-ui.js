@@ -235,6 +235,31 @@
           return DEFAULT_TEXT;
         }
 
+
+
+        /*
+          Show up to MAX_HINTS hints. 
+          Prioritize larger hints, 
+          Do not show hints that are subsumed by a larger hint set.
+
+          This would be easier if we could use sets as keys in JS objects.
+        */
+       /*
+        Algorithm:
+          Find the largest common subset of chaffs that pass.
+          (TODO: If there is no common subset, have to determine what next.)
+          
+          Find the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
+          and the powerset of the largest common subset of chaffs that pass.
+
+
+          Choose the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
+
+       */
+
+                // TODO: Change everything below.
+
+
         // Now I want to get the most common combinations of chaffs that pass.
         function findLargestCommonSubset(chaff_fingerprints) {
           if (chaff_fingerprints.length === 0) return [];
@@ -279,14 +304,7 @@
 
         const MAX_HINTS = 2;
 
-        //////// Now this is the tricky bit actually ////
-        /*
-          Show up to MAX_HINTS hints. 
-          Prioritize larger hints, 
-          Do not show hints that are subsumed by a larger hint set.
 
-          This would be easier if we could use sets as keys in JS objects.
-        */
 
 
 
