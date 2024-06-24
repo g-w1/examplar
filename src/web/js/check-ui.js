@@ -178,34 +178,133 @@
       }, "check-block-comments: each: contents");
     }
 
-    function getHint() {      
+    function getHint() {
+      
+      
+      //// SP: TODO: THIS IS MISLEADING AND PROBABLY SHOULD BE FIXED!!!
       const DEFAULT_TEXT ="Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
       const HINT_PREFIX = "<h3>Hint</h3>";
+
+
+      /*
+        PLAN OF ACTION
+        ------------------
+        - [ ]  Number of tests: If students fail more than one test, we should still try to show a hint.
+               If all the tests  share a sub-fingerprint that has an associated hint, show the hint associated with that mutant.
+               Else, choose a targeted test / choose a hint at random? There may be some cases where things are far too spread out?
+      - [ ]  Number of failures for a hint: We currently allow for **up to 2 `mark`**s in a feature vector when showing a hint. This seems the obvious place for a scale up, and the most impactful.
+          - One option is to increase this to 3.
+          - Another is to create a hint for each possible feature vector?
+          - Or have some common sub-fingerprints as candidates as well.
+              - Prioritize these sub-fingerprints if they subsume a candidate.
+              - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
+
+
+
+
+      */
+
+
+
+
+
 
       function get_hint_text() {
         let wfes = window.hint_candidates
         let num_wfes =   (wfes != null) ? Object.keys(wfes).length : 0;
-        if (num_wfes  == 0) {
+
+
+        /*
+                - [ ]  Number of failures for a hint: We currently allow for **up to 2 `mark`**s in a feature vector when showing a hint. This seems the obvious place for a scale up, and the most impactful.
+          - Or have some common sub-fingerprints as candidates as well.
+              - Prioritize these sub-fingerprints if they subsume a candidate.
+              - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
+
+
+
+
+        */
+
+        let failing_test_ids = Object.keys(wfes);
+        let candidate_chaffs = failing_test_ids.reduce((acc, k) => {
+                                acc[k] = wfes[k];
+                                return acc;
+                              }, {});
+
+        if (num_wfes  == 0 || Object.keys(candidate_chaffs).length == 0) {
           return DEFAULT_TEXT;
         }
-        else if (num_wfes > 1) {
-          // This is (hopefully) unreachable.
-          // However, keeping it in as a backstop in case
-          // Examplar reaches a state where there are multiple wheat failures
-          // and we're still looking for a hint.
-          return  `There are currently too many invalid tests to provide further feedback.
-          The system may be able to provide more directed feedback
-          when there is exactly one invalid test.`;
+
+        // Now I want to get the most common combinations of chaffs that pass.
+        function findLargestCommonSubset(chaff_fingerprints) {
+          if (chaff_fingerprints.length === 0) return [];
+        
+          // Initialize the set of common elements with the first list
+          let commonElements = new Set(chaff_fingerprints[0]);
+        
+          // Iterate over each list of chaffs
+          chaff_fingerprints.forEach(chaffList => {
+            let currentSet = new Set(chaffList);
+            // Intersect with the current set of common elements
+            commonElements = new Set([...commonElements].filter(x => currentSet.has(x)));
+          });
+          return commonElements;
+        }
+        let chaff_set_to_hint = findLargestCommonSubset(Object.values(candidate_chaffs));
+
+
+        // TODO: Review this! Now we wouldn't show up to 2. So let's rethink.
+        // If the common fingerprint set is empty (ie each test fails a different subset of chaffs),
+        // choose the first chaff set to provide a hint for.
+        if (chaff_set_to_hint.size === 0) {
+
+          // TODO: Change this to the set with the smallest size (non-zero)
+          chaff_set_to_hint = new Set(Object.values(candidate_chaffs)[0]);
+        }
+        
+        function commaSeparatedStringToSet(str) {
+          return new Set(str.split(',').map(item => item.trim()));
         }
 
-        let test_id = Object.keys(wfes)[0];
-        let candidate_chaffs = wfes[test_id];
-  
-        // We can only provide useful hints when wfe's accept exactly 1 or 2 chaffs.
-        if (candidate_chaffs.length > 2)
-        {
-            return DEFAULT_TEXT;
-        }
+
+        // Fingerprints with hints are sets
+        let fingerprints_with_hints = Object.keys(window.hints).map( k => commaSeparatedStringToSet(k));
+
+        // I want to find the largest intersection between chaff_set_to_hint and an element of fingerprints_with_hints
+        let largest_intersection = fingerprints_with_hints.reduce((largest, current) => {
+          const currentSize = new Set([...current].filter(x => chaff_set_to_hint.has(x))).size;
+          const largestSize = largest ? new Set([...largest].filter(x => chaff_set_to_hint.has(x))).size : 0;
+          return currentSize > largestSize ? current : largest;
+        }, null);
+
+        const MAX_HINTS = 2;
+
+        //////// Now this is the tricky bit actually ////
+        /*
+          Show up to MAX_HINTS hints. 
+          Prioritize larger hints, 
+          Do not show hints that are subsumed by a larger hint set.
+
+          This would be easier if we could use sets as keys in JS objects.
+        */
+
+
+
+
+        /*
+
+          window.hints is of the form
+          {
+            "chaff_name" : { hint : "hint text"}
+          }
+
+          Now we want it to allow comma separated lists of chaffs
+          {
+            "chaff_name" : { hint : "hint text"},
+            "chaff_name1, chaff_name2" : { hint : "hint text"}
+          }
+
+        */
 
         let text = "";
         for (var i in candidate_chaffs) {
@@ -460,17 +559,27 @@
               let c = document.createElement("div");
               c.classList += ["container-fluid"];
               c.id = "hint_box";
-              c.innerHTML = (num_wfe == 1)  ?
-                ` <div class="card-body> 
-                      <p class="card-text">
-                        The system <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
-                        <button id='hint_button' class="btn btn-success" onclick="window.gen_hints()"> Try to find a hint! </button>
-                        </p> </div>`
-              : `<div class="card-body> <p class="card-text">
-                There are currently too many invalid tests to provide further feedback.
-                The system may be able to provide more directed feedback
-                when there is exactly one invalid test. </p>    
-                </p> </div>`;
+
+
+              // SP: TODO: we should support more than one wfe
+              // c.innerHTML = (num_wfe == 1)  ?
+              //   ` <div class="card-body> 
+              //         <p class="card-text">
+              //           The system <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
+              //           <button id='hint_button' class="btn btn-success" onclick="window.gen_hints()"> Try to find a hint! </button>
+              //           </p> </div>`
+              // : `<div class="card-body> <p class="card-text">
+              //   There are currently too many invalid tests to provide further feedback.
+              //   The system may be able to provide more directed feedback
+              //   when there is exactly one invalid test. </p>    
+              //   </p> </div>`;
+
+              c.innerHTML = ` <div class="card-body> 
+                    <p class="card-text">
+                      The system <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
+                      <button id='hint_button' class="btn btn-success" onclick="window.gen_hints()"> Try to find a hint! </button>
+                      </p> </div>`;
+
 
               message_elt.parentElement.appendChild(c);
               }
