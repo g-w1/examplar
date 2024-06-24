@@ -1,23 +1,35 @@
 ({
   requires: [
-    { "import-type": "dependency",
+    {
+      "import-type": "dependency",
       protocol: "js-file",
-      args: ["./output-ui"] },
-    { "import-type": "dependency",
+      args: ["./output-ui"]
+    },
+    {
+      "import-type": "dependency",
       protocol: "js-file",
-      args: ["./error-ui"] },
-    { "import-type": "builtin",
-      name: "option" },
-    { "import-type": "builtin",
-      name: "srcloc" },
-    { "import-type": "builtin",
-      name: "checker" },
-    { "import-type": "builtin",
-      name: "load-lib" }
+      args: ["./error-ui"]
+    },
+    {
+      "import-type": "builtin",
+      name: "option"
+    },
+    {
+      "import-type": "builtin",
+      name: "srcloc"
+    },
+    {
+      "import-type": "builtin",
+      name: "checker"
+    },
+    {
+      "import-type": "builtin",
+      name: "load-lib"
+    }
   ],
   provides: {},
   nativeRequires: [],
-  theModule: function(runtime, _, uri, outputUI, errorUI, option, srcloc, checker, loadLib) {
+  theModule: function (runtime, _, uri, outputUI, errorUI, option, srcloc, checker, loadLib) {
 
     option = runtime.getField(option, "values");
     srcloc = runtime.getField(srcloc, "values");
@@ -42,7 +54,7 @@
       const endChar = name[2].ch;
 
       const fileLines = getAllLines(l.doc);
-      
+
       if (startLine == endLine) {
         return fileLines[startLine].text.substring(startChar, endChar);
       }
@@ -97,17 +109,17 @@
 
     // https://stackoverflow.com/a/38327540/7501301
     function groupBy(list, keyGetter) {
-        const map = new Map();
-        list.forEach((item) => {
-             const key = keyGetter(item);
-             const collection = map.get(key);
-             if (!collection) {
-                 map.set(key, [item]);
-             } else {
-                 collection.push(item);
-             }
-        });
-        return map;
+      const map = new Map();
+      list.forEach((item) => {
+        const key = keyGetter(item);
+        const collection = map.get(key);
+        if (!collection) {
+          map.set(key, [item]);
+        } else {
+          collection.push(item);
+        }
+      });
+      return map;
     }
 
     // NOTE: MUST BE CALLED WHILE RUNNING ON runtime's STACK
@@ -119,9 +131,9 @@
       // RETURNED FUNCTION MUST BE CALLED IN THE CONTEXT OF THE PYRET STACK
       function applyMethod(value, name, args) {
         return runtime.
-          safeThen(function() {
+          safeThen(function () {
             return runtime.getField(value, name);
-          }, applyMethod).then(function(fun) {
+          }, applyMethod).then(function (fun) {
             return fun.app.apply(value, args);
           })
       }
@@ -131,58 +143,65 @@
         return Q(outputUI.Position.fromPyretSrcloc(runtime, srcloc, loc, documents));
       }
 
-      var any = runtime.makeFunction(function(_){return runtime.pyretTrue;});
+      var any = runtime.makeFunction(function (_) { return runtime.pyretTrue; });
       var contents = ffi.toArray(checkResults);
-      var result   = [];
+      var result = [];
 
       function render_TestResult(testresult) {
         function render_result(passed) {
-          return function(loc) {
+          return function (loc) {
             return format(loc)
-              .then(function(loc){return {loc: loc, passed: passed};});
+              .then(function (loc) { return { loc: loc, passed: passed }; });
           };
         }
         return runtime.ffi.cases(any, "TestResult", testresult, {
-           "success"  : function(_) {return render_result(true)(testresult.dict.loc);},
-           "else"     : function(r) {return render_result(false)(r.dict.loc);},
+          "success": function (_) { return render_result(true)(testresult.dict.loc); },
+          "else": function (r) { return render_result(false)(r.dict.loc); },
         });
       }
 
       function render_CheckBlockResult(checkblockresult) {
         return runtime.ffi.cases(any, "CheckBlockResult", checkblockresult, {
-          "check-block-result": function(name,loc,keyword_check,test_results,maybe_err) {
+          "check-block-result": function (name, loc, keyword_check, test_results, maybe_err) {
             var results = runtime.ffi.toArray(test_results);
-            var render  = [];
-            return runtime.safeThen(function() {
-                return runtime.eachLoop(runtime.makeFunction(function(i) {
-                    return render_TestResult(results[i])
-                      .then(function(rendered) {render.push(rendered);});
-                  }), 0, results.length);
-              }, render_CheckBlockResult)
-              .then(function(_) {
-                return { name : name,
-                         loc  : outputUI.Position.fromPyretSrcloc(runtime, srcloc, loc, documents),
-                         error: runtime.ffi.isSome(maybe_err),
-                         tests: render }; })
-          }});
+            var render = [];
+            return runtime.safeThen(function () {
+              return runtime.eachLoop(runtime.makeFunction(function (i) {
+                return render_TestResult(results[i])
+                  .then(function (rendered) { render.push(rendered); });
+              }), 0, results.length);
+            }, render_CheckBlockResult)
+              .then(function (_) {
+                return {
+                  name: name,
+                  loc: outputUI.Position.fromPyretSrcloc(runtime, srcloc, loc, documents),
+                  error: runtime.ffi.isSome(maybe_err),
+                  tests: render
+                };
+              })
+          }
+        });
       }
 
-      return runtime.safeCall(function() {
-        return runtime.eachLoop(runtime.makeFunction(function(i) {
+      return runtime.safeCall(function () {
+        return runtime.eachLoop(runtime.makeFunction(function (i) {
           return render_CheckBlockResult(contents[i])
-            .then(function(rendered) { result.push(rendered); })
+            .then(function (rendered) { result.push(rendered); })
             .start();
         }), 0, contents.length);
-      }, function(_) {
+      }, function (_) {
         return result;
       }, "check-block-comments: each: contents");
     }
 
     function getHint() {
-      
-      
+
+
       //// SP: TODO: THIS IS MISLEADING AND PROBABLY SHOULD BE FIXED!!!
-      const DEFAULT_TEXT ="Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
+      const DEFAULT_TEXT = "Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
+
+      const TOO_MANY_FAILURES = "REWRITE ME: TOO MANY WHEAT FAILING EXAMPLES"
+
       const HINT_PREFIX = "<h3>Hint</h3>";
 
 
@@ -198,10 +217,6 @@
           - Or have some common sub-fingerprints as candidates as well.
               - Prioritize these sub-fingerprints if they subsume a candidate.
               - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
-
-
-
-
       */
 
 
@@ -210,8 +225,9 @@
 
 
       function get_hint_text() {
+        const MAX_HINTS = 2;
         let wfes = window.hint_candidates
-        let num_wfes =   (wfes != null) ? Object.keys(wfes).length : 0;
+        let num_wfes = (wfes != null) ? Object.keys(wfes).length : 0;
 
 
         /*
@@ -219,19 +235,15 @@
           - Or have some common sub-fingerprints as candidates as well.
               - Prioritize these sub-fingerprints if they subsume a candidate.
               - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
-
-
-
-
         */
 
         let failing_test_ids = Object.keys(wfes);
         let candidate_chaffs = failing_test_ids.reduce((acc, k) => {
-                                acc[k] = wfes[k];
-                                return acc;
-                              }, {});
+          acc[k] = wfes[k];
+          return acc;
+        }, {});
 
-        if (num_wfes  == 0 || Object.keys(candidate_chaffs).length == 0) {
+        if (num_wfes == 0 || Object.keys(candidate_chaffs).length == 0) {
           return DEFAULT_TEXT;
         }
 
@@ -244,29 +256,29 @@
 
           This would be easier if we could use sets as keys in JS objects.
         */
-       /*
-        Algorithm:
-          Find the largest common subset of chaffs that pass.
-          (TODO: If there is no common subset, have to determine what next.)
-          
-          Find the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
-          and the powerset of the largest common subset of chaffs that pass.
+        /*
+         Algorithm:
+           Find the largest common subset of chaffs that pass.
+           (TODO: If there is no common subset, have to determine what next.)
+           
+           Find the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
+           and the powerset of the largest common subset of chaffs that pass.
+ 
+ 
+           Choose the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
+ 
+        */
 
+        // TODO: Change everything below.
 
-          Choose the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
-
-       */
-
-                // TODO: Change everything below.
-
-
+        let chaff_fingerprints = Object.values(candidate_chaffs);
         // Now I want to get the most common combinations of chaffs that pass.
         function findLargestCommonSubset(chaff_fingerprints) {
           if (chaff_fingerprints.length === 0) return [];
-        
+
           // Initialize the set of common elements with the first list
           let commonElements = new Set(chaff_fingerprints[0]);
-        
+
           // Iterate over each list of chaffs
           chaff_fingerprints.forEach(chaffList => {
             let currentSet = new Set(chaffList);
@@ -275,86 +287,132 @@
           });
           return commonElements;
         }
-        let chaff_set_to_hint = findLargestCommonSubset(Object.values(candidate_chaffs));
+        let chaff_set_to_hint = findLargestCommonSubset(chaff_fingerprints);
 
-
-        // TODO: Review this! Now we wouldn't show up to 2. So let's rethink.
-        // If the common fingerprint set is empty (ie each test fails a different subset of chaffs),
-        // choose the first chaff set to provide a hint for.
-        if (chaff_set_to_hint.size === 0) {
-
-          // TODO: Change this to the set with the smallest size (non-zero)
-          chaff_set_to_hint = new Set(Object.values(candidate_chaffs)[0]);
-        }
-        
         function commaSeparatedStringToSet(str) {
           return new Set(str.split(',').map(item => item.trim()));
         }
 
+        function getHTMLforHint(key) {
 
-        // Fingerprints with hints are sets
-        let fingerprints_with_hints = Object.keys(window.hints).map( k => commaSeparatedStringToSet(k));
+          c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
+          let chaff_metadata = window.hints[key];
+          let hint_text =
+            (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
+              ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
+              : chaff_metadata['hint'];
+          let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
+        ${hint_text}
+        <div class="text-right text-muted">
+        <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
+        <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
+        </div>
+      </div>
+      <br>`;
+          return hint_html;
 
-        // I want to find the largest intersection between chaff_set_to_hint and an element of fingerprints_with_hints
-        let largest_intersection = fingerprints_with_hints.reduce((largest, current) => {
-          const currentSize = new Set([...current].filter(x => chaff_set_to_hint.has(x))).size;
-          const largestSize = largest ? new Set([...largest].filter(x => chaff_set_to_hint.has(x))).size : 0;
-          return currentSize > largestSize ? current : largest;
-        }, null);
-
-        const MAX_HINTS = 2;
-
-
-
-
+        }
 
 
         /*
-
-          window.hints is of the form
-          {
-            "chaff_name" : { hint : "hint text"}
-          }
-
-          Now we want it to allow comma separated lists of chaffs
-          {
-            "chaff_name" : { hint : "hint text"},
-            "chaff_name1, chaff_name2" : { hint : "hint text"}
-          }
-
+          Now, we want to find the most applicable hint.
+          Ideally, this would be the largest common subset of chaff_set_to_hint that has a hint.
+          If there is no common subset (ie everything is disjoint),
+          chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
         */
 
-        let text = "";
-        for (var i in candidate_chaffs) {
-          let c = candidate_chaffs[i];
-          let chaff_metadata = (c in window.hints) ? window.hints[c] : "Examplar was unable to find a hint.";
-          let hint_text =
-            (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
-            ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
-            : chaff_metadata['hint'];
+        let test_suite_wide_hints = []
 
+        for (var hint in window.hints) {
+          let hint_set = commaSeparatedStringToSet(hint);
 
-            let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
-              ${hint_text}
-              <div class="text-right text-muted">
-              <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
-              <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
-              </div>
-            </div>`;
+          let isSubset = [...hint_set].every(e => chaff_set_to_hint.has(e));
 
-            text += hint_html + "<br>";
+          if (isSubset) {
+            let hint_html = getHTMLforHint(hint);
+            test_suite_wide_hints.append({
+              "num_matched": hint_set.length,
+              "hint_html": hint_html
+            })
+          }
         }
-        return (text.length == 0) ? DEFAULT_TEXT : text;
+
+        test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
+
+
+        if (test_suite_wide_hints.length > 0) {
+          /* TODO:
+    
+            What if there are multiple of max size. Should return them all (or by max_size)?
+             Or NOT return if MAX_SIZE is not respected?
+    
+          */
+
+
+          // Allow for scenarios where the text of two hints might be the same?
+          // ehh think about it, not as urgent.
+
+          return test_suite_wide_hints[0].hint_html;
+
+        }
+
+        /* 
+          If there are no test suite wide hints, we have to  now see if there are hints that can cover the failing tests?
+          That is, are there at most MAX_HINT hints that cover all test failures.
+        */
+
+        function* combinations(array, k) {
+          if (k === 0) {
+            yield [];
+          } else {
+            for (let i = 0; i <= array.length - k; i++) {
+              // For each element in the array, yield all combinations that include this element
+              // and k-1 more elements from the rest of the array.
+              const first = array[i];
+              for (let next of combinations(array.slice(i + 1), k - 1)) {
+                yield [first, ...next];
+              }
+            }
+          }
+        }
+
+        let xs = [...Object.values(window.chaffs).map(x => commaSeparatedStringToSet(x))];
+        for (var k = 2; k <= MAX_HINTS; k++) {
+          for (let combo of combinations(xs, k)) {
+            let isValidCombo = true; // Assume the combo is valid initially
+        
+            for (var cf of chaff_fingerprints) {
+              let markedChaffs = commaSeparatedStringToSet(cf);
+        
+              let atLeastOneMatch = combo.any((c) => {
+                return (c.size == markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
+              });
+        
+              if (!atLeastOneMatch) {
+                isValidCombo = false; // Mark combo as invalid and break the current loop
+                break;
+              }
+            }
+        
+            if (isValidCombo) {
+              // If we get here, we have found a valid combination!
+              return combo.map(hint => getHTMLforHint(hint)).join("");
+            }
+          }
+        }
+
+        //If no strategies apply, we have no hints to show, and should return the default text.
+        return DEFAULT_TEXT;
       }
 
-      
+
       let container = document.createElement("div");
       container.classList += ["container-fluid"];
       try {
         hint_text = get_hint_text();
         container.innerHTML = `<div>${HINT_PREFIX + hint_text}</div>`;
 
-        window.vote =  function (button) {
+        window.vote = function (button) {
           const bId = button.getAttribute('id');
           let content = document.getElementById("output");
 
@@ -369,7 +427,7 @@
           window.cloud_log(event_type, payload);
         }
       }
-      catch(e) {
+      catch (e) {
         console.error('Error generating hint:', e)
         container.innerHTML = "Something went wrong, failed to find a hint.";
       }
@@ -381,12 +439,12 @@
 
     function hasValidity(examplar_results) {
       return !(examplar_results == null ||
-             ( examplar_results != null &&
-               examplar_results.wheat != null &&
-               examplar_results.wheat.length == 0));
+        (examplar_results != null &&
+          examplar_results.wheat != null &&
+          examplar_results.wheat.length == 0));
     }
 
-    function drawExamplarResults(check_blocks, examplar_results, is_qtm_block=false) {
+    function drawExamplarResults(check_blocks, examplar_results, is_qtm_block = false) {
       const class_prefix = is_qtm_block ? "qtm-" : "";
 
       let container_elt = document.createElement("div");
@@ -466,22 +524,22 @@
 
         let chaff_catchers =
           chaffs.map(chaff =>
-              chaff.map(function(block) {
-                if (block.error) {
-                  return [block.loc];
-                } else {
-                  return block.tests.filter(test => !test.passed)
-                                    .map(test => test.loc)
-                }
-              })
-                .reduce((acc, val) => acc.concat(val), []));
+            chaff.map(function (block) {
+              if (block.error) {
+                return [block.loc];
+              } else {
+                return block.tests.filter(test => !test.passed)
+                  .map(test => test.loc)
+              }
+            })
+              .reduce((acc, val) => acc.concat(val), []));
 
         let chaff_list = document.createElement('ul');
         chaff_list.classList.add(`${class_prefix}chaff_list`);
 
         function render_chaff(catchers) {
           let chaff = document.createElement('a');
-          chaff.setAttribute('href','#');
+          chaff.setAttribute('href', '#');
           chaff.classList.add('chaff');
           chaff.textContent = is_qtm_block ? '🌠' : '🐛';
 
@@ -489,16 +547,16 @@
             chaff.classList.add('caught');
           }
 
-          chaff.addEventListener('click',function(e) {
+          chaff.addEventListener('click', function (e) {
             e.preventDefault();
           });
 
-          chaff.addEventListener('mouseenter',function() {
-            catchers.forEach(function(loc) { loc.highlight('#91ccec'); });
+          chaff.addEventListener('mouseenter', function () {
+            catchers.forEach(function (loc) { loc.highlight('#91ccec'); });
           });
 
-          chaff.addEventListener('mouseleave',function() {
-            catchers.forEach(function(loc) { loc.highlight(); });
+          chaff.addEventListener('mouseleave', function () {
+            catchers.forEach(function (loc) { loc.highlight(); });
           });
 
           return chaff;
@@ -506,7 +564,7 @@
 
 
         chaff_catchers.map(render_chaff)
-          .forEach(function(chaff_widget){
+          .forEach(function (chaff_widget) {
             let li = document.createElement('li');
             li.appendChild(chaff_widget);
             chaff_list.appendChild(li);
@@ -521,9 +579,9 @@
             : undefined); // unreachable
         const input_space_submessage = has_qtm_in_test ? `They also explored ${num_caught} of our ${num_chaffs} envisioned partitions of the input space. Add more inputs that cover more of the input space.` : "";
         const qtm_message = `The ${qtm_submessage} are <span class="valid">valid and consistent</span> with the assignment handout. ${input_space_submessage}`;
-        
+
         message_elt.innerHTML = is_qtm_block
-          ? qtm_message 
+          ? qtm_message
           : `These tests are <span class="valid">valid and consistent</span> with the assignment handout. They caught ${num_caught} of ${num_chaffs} sample buggy programs. Add more test cases to improve this test suite's thoroughness.`;
         thoroughness_elt.appendChild(chaff_list);
 
@@ -542,16 +600,16 @@
           // TODO: Handle wfes that are in the inter-wheat space.
           // Perhaps we should flag them differently in examplar.
           let num_wfe =
-          wheats.map(
-            wheat => wheat.reduce(
-              (acc, block) => acc + block.tests.reduce(
-                (wfes_in_block, test) => wfes_in_block + (test.passed ? 0 : 1),
-                0), 0))             
+            wheats.map(
+              wheat => wheat.reduce(
+                (acc, block) => acc + block.tests.reduce(
+                  (wfes_in_block, test) => wfes_in_block + (test.passed ? 0 : 1),
+                  0), 0))
               .reduce((a, b) => Math.max(a, b), -Infinity);
 
-          if (window.hint_run) {        
+          if (window.hint_run) {
             try {
-              let hint = getHint();       
+              let hint = getHint();
               message_elt.parentElement.appendChild(hint);
             }
             catch (e) {
@@ -562,10 +620,10 @@
               window.hint_candidates = null;
             }
           }
-          else { 
-            
-            window.gen_hints =  function () {
-              window.hint_run = true; 
+          else {
+
+            window.gen_hints = function () {
+              window.hint_run = true;
               window.cloud_log("GEN_HINT", "");
               document.getElementById('runButton').click()
             }
@@ -600,7 +658,7 @@
 
 
               message_elt.parentElement.appendChild(c);
-              }
+            }
           }
         }
 
@@ -610,7 +668,7 @@
               block => block.error
                 ? block.loc
                 : block.tests.filter(test => !test.passed)
-                             .map(test => test.loc))
+                  .map(test => test.loc))
               .reduce((acc, val) => acc.concat(val), []))
             .reduce((acc, val) => acc.concat(val), []);
 
@@ -638,11 +696,11 @@
       var get = runtime.getField;
 
       let checkErroredSkeletons = new Array();
-      let testsFailedSkeletons  = new Array();
-      let testsPassedSkeletons  = new Array();
+      let testsFailedSkeletons = new Array();
+      let testsPassedSkeletons = new Array();
 
       var noFramesMaybeStackLoc =
-        runtime.makeFunction(function(n, userFramesOnly) {
+        runtime.makeFunction(function (n, userFramesOnly) {
           return runtime.ffi.makeNone();
         });
 
@@ -654,22 +712,22 @@
         var handle = undefined;
         if (CPO.sourceAPI.is_loaded(source)) {
           handle = outputUI.Position.fromPyretSrcloc(runtime, srcloc, loc, documents);
-          anchor.addEventListener("click", function(e) {
+          anchor.addEventListener("click", function (e) {
             handle.goto();
             e.stopPropagation();
           });
-          anchor.addEventListener("mouseover", function(e) {
+          anchor.addEventListener("mouseover", function (e) {
             handle.hint();
           });
-          anchor.addEventListener("mouseleave", function(e) {
+          anchor.addEventListener("mouseleave", function (e) {
             outputUI.unhintLoc();
           });
         } else {
-          anchor.addEventListener("click", function(e){
+          anchor.addEventListener("click", function (e) {
             window.flashMessage("This code is not in this editor.");
           });
         }
-        return {anchor: anchor, handle: handle};
+        return { anchor: anchor, handle: handle };
       }
 
       function makeGutterMarker(spanHandle, clickFunc) {
@@ -694,10 +752,10 @@
 
         function onChange(line) {
           var spanLineNo = spanHandle.from;
-          if(spanLineNo === undefined)
+          if (spanLineNo === undefined)
             return;
           var lineNo = line.lineNo();
-          if(lineNo === undefined)
+          if (lineNo === undefined)
             return;
           else if (spanLineNo.line != lineNo) {
             line.off("change", onChange);
@@ -729,8 +787,8 @@
         });
 
         spanHandle.on("hide",
-          function(){
-            if(lineHandle === undefined)
+          function () {
+            if (lineHandle === undefined)
               return;
             editor.off("gutterClick", onClick);
             lineHandle.off("change", onChange);
@@ -740,7 +798,7 @@
           });
 
         spanHandle.on("unhide",
-          function(){
+          function () {
             lineHandle = doc.addLineClass(spanHandle.from.line, "gutter", "failed-test-marker");
             editor.on("gutterClick", onClick);
             lineHandle.on("change", onChange);
@@ -751,14 +809,14 @@
 
       function makeTestHeader(testNumber, loc, isPassing) {
         var header = document.createElement("header");
-        var nameHandle   = makeNameHandle("Test " + testNumber, loc,
+        var nameHandle = makeNameHandle("Test " + testNumber, loc,
           (isPassing ? "hsl(88, 50%, 76%)" : "hsl(45, 100%, 85%)"));
-        var name   = nameHandle.anchor;
+        var name = nameHandle.anchor;
         var handle = nameHandle.handle;
         var status = document.createTextNode(isPassing ? ": Passed" : ": Failed");
         header.appendChild(name);
         header.appendChild(status);
-        return {header : header, handle : handle};
+        return { header: header, handle: handle };
       }
 
       var lastHighlighted = undefined;
@@ -784,7 +842,7 @@
             });
           }
 
-          if(runtime.hasField(test, "actual-exn")) {
+          if (runtime.hasField(test, "actual-exn")) {
             var stack = get(loadLib, "internal")
               .enrichStack(get(test, "actual-exn").val, get(loadLib, "internal").getModuleResultRealm(result));
             this.maybeStackLoc = outputUI.makeMaybeStackLoc(
@@ -863,7 +921,7 @@
 
         /* Replace the placeholder for the failing test with the error rendering */
         PassingTestSkeleton.prototype.vivify = function vivify() {
-          var snippet  = new outputUI.Snippet(this.handle);
+          var snippet = new outputUI.Snippet(this.handle);
           this.tombstone.appendChild(snippet.container);
           if (this.block.container.classList.contains("expanded")) {
             snippet.editor.refresh();
@@ -919,19 +977,19 @@
 
             let examplar_header = document.createElement("h3");
             examplar_header.textContent = "Examplar";
-            let examplar_summary = drawExamplarResults(blocks, regular_results, is_qtm_block=false);
+            let examplar_summary = drawExamplarResults(blocks, regular_results, is_qtm_block = false);
             header.parentNode.insertBefore(examplar_summary, header.nextSibling);
             header.parentNode.insertBefore(examplar_header, examplar_summary);
 
             if (qtm_results != null && qtm_results.chaff.length > 0) {
               let qtm_header = document.createElement("h3");
               qtm_header.textContent = "Quartermaster";
-              let qtm_summary = drawExamplarResults(blocks, qtm_results, is_qtm_block=true);
+              let qtm_summary = drawExamplarResults(blocks, qtm_results, is_qtm_block = true);
               qtm_summary.style.marginBottom = "3em";
               header.parentNode.insertBefore(qtm_summary, header.nextSibling);
               header.parentNode.insertBefore(qtm_header, qtm_summary);
             }
-            
+
             return examplar_summary;
           });
 
@@ -947,11 +1005,11 @@
 
           let checkBlocksErrored = skeletons.filter(s => s.encounteredError).length;
 
-          function TESTS(n){return n == 1 ? "TEST" : "TESTS";}
+          function TESTS(n) { return n == 1 ? "TEST" : "TESTS"; }
 
           let summary_bits = $("<div>").addClass("summary-bits");
 
-          if (checkBlocksErrored > 0 ) {
+          if (checkBlocksErrored > 0) {
             summary_bits
               .append($("<div>").addClass("summary-bit summary-errored")
                 .html("<span class='summary-count'>" + checkBlocksErrored + "</span> " + "<span class='summary-status'>blocks errored.</span>"));
@@ -959,8 +1017,8 @@
             summary_bits
               .append($("<div>").addClass("summary-bit summary-failed")
                 .html("<span class='summary-count'>" + testsFailedAll + "</span> <span class='summary-status'>" + TESTS(testsFailedAll) + " FAILED.</span>" +
-                  (hasValidity(examplar_results) ? " <span class='summary-advice'>Your implementation is likely buggy.</span>" 
-                                                 : "")));
+                  (hasValidity(examplar_results) ? " <span class='summary-advice'>Your implementation is likely buggy.</span>"
+                    : "")));
           } else {
             summary_bits
               .append($("<div>").addClass("summary-bit summary-passed")
@@ -971,7 +1029,7 @@
           this.view_button_elt = view_button_elt;
           view_button_elt.textContent = "Show Results";
 
-          view_button_elt.addEventListener("click", function() {
+          view_button_elt.addEventListener("click", function () {
             if (container.classList.contains("expanded")) {
               _this.hideTests();
             } else {
@@ -1033,21 +1091,21 @@
           var _this = this;
 
           // destructure the `block` pyret value
-          let name          = get(block, "name");
-          let loc           = get(block, "loc");
-          let maybeError    = get(block, "maybe-err");
-          let testResults   = get(block, "test-results");
-          let keywordCheck  = get(block, "keyword-check");
+          let name = get(block, "name");
+          let loc = get(block, "loc");
+          let maybeError = get(block, "maybe-err");
+          let testResults = get(block, "test-results");
+          let keywordCheck = get(block, "keyword-check");
 
           this.file = file;
           this.name = name;
 
-          let testsPassing  = 0;
+          let testsPassing = 0;
           let testsExecuted = 0;
 
           let tests = ffi.toArray(testResults).
             reverse().
-            map(function(test) {
+            map(function (test) {
               let testSuccess = isTestSuccess(test);
               testsExecuted++;
               let skeleton;
@@ -1062,14 +1120,14 @@
               return skeleton;
             });
 
-          let endedInError    = get(option, "is-some").app(maybeError);
+          let endedInError = get(option, "is-some").app(maybeError);
           let allTestsPassing = testsPassing === testsExecuted;
           let error = endedInError ? get(maybeError, "value").val : undefined;
 
           let passing = testsPassing;
           let executed = testsExecuted;
 
-          this.stats = {passed: passing, executed: executed, errored: endedInError};
+          this.stats = { passed: passing, executed: executed, errored: endedInError };
 
           if (endedInError) {
             checkErroredSkeletons.push(this);
@@ -1097,14 +1155,14 @@
             testList.appendChild(errorTestsSummary);
           } else {
             summary.textContent = testsExecuted == 1 && testsPassing == 1 ? "The test in this block passed."
-            // Only one test in block; it fails
-            : testsExecuted == 1 && testsPassing == 0 ? "The test in this block failed." : testsExecuted == 0 ?
-            //  Huh, a block with no tests?
-            "There were no tests in this block!" : testsExecuted == testsPassing ?
-            //  More than one test; all pass.
-            "All " + testsExecuted + " tests in this block passed."
-            //  More than one test; some pass
-            : testsPassing + " out of " + testsExecuted + " tests passed in this block.";
+              // Only one test in block; it fails
+              : testsExecuted == 1 && testsPassing == 0 ? "The test in this block failed." : testsExecuted == 0 ?
+                //  Huh, a block with no tests?
+                "There were no tests in this block!" : testsExecuted == testsPassing ?
+                  //  More than one test; all pass.
+                  "All " + testsExecuted + " tests in this block passed."
+                  //  More than one test; some pass
+                  : testsPassing + " out of " + testsExecuted + " tests passed in this block.";
           }
 
           testList.classList.add("check-block-tests");
@@ -1154,7 +1212,7 @@
           this.container = container;
           this.tombstone = tombstone;
           this.testsPassed = passing;
-          this.testsExecuted =  executed;
+          this.testsExecuted = executed;
           this.encounteredError = endedInError;
         }
 
@@ -1164,7 +1222,7 @@
           outputUI.clearEffects();
           lastHighlighted = this;
           lastHighlighted.tombstone.classList.add("highlights-active");
-          if(this.rendering) {
+          if (this.rendering) {
             this.rendering.trigger('toggleHighlight');
             this.rendering.addClass('highlights-active');
           }
@@ -1199,7 +1257,7 @@
         CheckBlockSkeleton.prototype.hideTests = function hideTests() {
           this.container.classList.remove("expanded");
           var innerHighlights = $(this.container).find(".highlights-active");
-          if(innerHighlights.length > 0)
+          if (innerHighlights.length > 0)
             outputUI.clearEffects();
           outputUI.clearEffects();
           lastHighlighted = undefined;
@@ -1224,7 +1282,7 @@
 
       var checkBlocks = ffi.toArray(checkResults);
 
-      let groupedCheckBlocks = groupBy(checkBlocks, function(block) {
+      let groupedCheckBlocks = groupBy(checkBlocks, function (block) {
         return get(get(block, "loc"), "source");
       });
 
@@ -1257,22 +1315,22 @@
 
       var checkResultsContainer = document.createElement("div");
       checkResultsContainer.classList.add("test-results");
-      try{
+      try {
 
-      for (var [file, blocks] of groupedCheckBlocks) {
-        if (blocks.length == 0 && ((file == "definitions://" ? examplarResults : null) == null || examplarResults.wheat.length == 0)) continue;
-        var skeleton = new FileSkeleton(file, blocks, (file == "definitions://" ? examplarResults : null));
-        checkResultsContainer.appendChild(skeleton.container);
-      }
+        for (var [file, blocks] of groupedCheckBlocks) {
+          if (blocks.length == 0 && ((file == "definitions://" ? examplarResults : null) == null || examplarResults.wheat.length == 0)) continue;
+          var skeleton = new FileSkeleton(file, blocks, (file == "definitions://" ? examplarResults : null));
+          checkResultsContainer.appendChild(skeleton.container);
+        }
 
-      var checkPassedAll      = testsPassedSkeletons.length;
-      var checkBlocksErrored  = checkErroredSkeletons.length;
-      var checkTotalAll       = checkPassedAll + testsFailedSkeletons.length;
+        var checkPassedAll = testsPassedSkeletons.length;
+        var checkBlocksErrored = checkErroredSkeletons.length;
+        var checkTotalAll = checkPassedAll + testsFailedSkeletons.length;
 
-      var summary = $("<div>").addClass("check-block testing-summary");
-      container.append($(checkResultsContainer));
+        var summary = $("<div>").addClass("check-block testing-summary");
+        container.append($(checkResultsContainer));
 
-      }catch(e){console.error(e);}
+      } catch (e) { console.error(e); }
 
       // must be called on the pyret stack
       function vivifySkeleton(skeleton) {
@@ -1280,25 +1338,25 @@
         return runtime.pauseStack(function (restarter) {
           // the skeleton's pyretStack must already be enriched
           return error_to_html(runtime, documents, skeleton.renderable, skeleton.pyretStack, result).
-            then(function(html) {
+            then(function (html) {
               skeleton.vivify(html);
-            }).done(function () {restarter.resume(runtime.nothing)});
+            }).done(function () { restarter.resume(runtime.nothing) });
         });
       }
 
       return runtime.safeCall(
-        function(){
-          return runtime.eachLoop(runtime.makeFunction(function(i) {
+        function () {
+          return runtime.eachLoop(runtime.makeFunction(function (i) {
             return vivifySkeleton(checkErroredSkeletons[i]);
           }), 0, checkErroredSkeletons.length);
-        }, function(_) {
-          return runtime.safeCall(function() {
-            return runtime.eachLoop(runtime.makeFunction(function(i) {
+        }, function (_) {
+          return runtime.safeCall(function () {
+            return runtime.eachLoop(runtime.makeFunction(function (i) {
               return vivifySkeleton(testsFailedSkeletons[i]);
             }), 0, testsFailedSkeletons.length);
             return runtime.nothing;
-          }, function(_) {
-            for(var i = 0; i < testsPassedSkeletons.length; i++)
+          }, function (_) {
+            for (var i = 0; i < testsPassedSkeletons.length; i++)
               testsPassedSkeletons[i].vivify();
             checkResultsContainer.classList.add("check-results-done-rendering");
             return runtime.nothing;
