@@ -282,16 +282,7 @@
           }
         }
 
-
-
-
         if (test_suite_wide_hints.length > 0) {
-          /* TODO:
-    
-            What if there are multiple of max size. Should return them all (or by max_size)?
-             Or NOT return if MAX_SIZE is not respected?
-    
-          */
              test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
              const highestNumMatched = test_suite_wide_hints[0].num_matched;
              const highestHints = test_suite_wide_hints.filter(hint => hint.num_matched === highestNumMatched);
@@ -299,6 +290,8 @@
              let consolidated_hints = highestHints.slice(0, MAX_HINTS).map(hint => hint.hint_html);
              return consolidated_hints.join(" ");
         }
+
+        /////// Per Test Hints ///////
 
         /* 
           If there are no test suite wide hints, we have to  now see if there are hints that can cover the failing tests?
@@ -323,11 +316,9 @@
         let xs = [...Object.values(window.chaffs).map(x => commaSeparatedStringToSet(x))];
         for (var k = 2; k <= MAX_HINTS; k++) {
           for (let combo of combinations(xs, k)) {
-            let isValidCombo = true; // Assume the combo is valid initially
-        
+            let isValidCombo = true;
             for (var cf of chaff_fingerprints) {
               let markedChaffs = commaSeparatedStringToSet(cf);
-        
               let atLeastOneMatch = combo.any((c) => {
                 return (c.size == markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
               });
@@ -339,12 +330,10 @@
             }
         
             if (isValidCombo) {
-              // If we get here, we have found a valid combination!
               return combo.map(hint => getHTMLforHint(hint)).join("");
             }
           }
         }
-
         //If no strategies apply, we have no hints to show, and should return the default text.
         return DEFAULT_TEXT;
       }
