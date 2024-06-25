@@ -199,43 +199,13 @@
 
       //// SP: TODO: THIS IS MISLEADING AND PROBABLY SHOULD BE FIXED!!!
       const DEFAULT_TEXT = "Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
-
-      const TOO_MANY_FAILURES = "REWRITE ME: TOO MANY WHEAT FAILING EXAMPLES"
-
       const HINT_PREFIX = "<h3>Hint</h3>";
-
-
-      /*
-        PLAN OF ACTION
-        ------------------
-        - [ ]  Number of tests: If students fail more than one test, we should still try to show a hint.
-               If all the tests  share a sub-fingerprint that has an associated hint, show the hint associated with that mutant.
-               Else, choose a targeted test / choose a hint at random? There may be some cases where things are far too spread out?
-      - [ ]  Number of failures for a hint: We currently allow for **up to 2 `mark`**s in a feature vector when showing a hint. This seems the obvious place for a scale up, and the most impactful.
-          - One option is to increase this to 3.
-          - Another is to create a hint for each possible feature vector?
-          - Or have some common sub-fingerprints as candidates as well.
-              - Prioritize these sub-fingerprints if they subsume a candidate.
-              - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
-      */
-
-
-
-
 
 
       function get_hint_text() {
         const MAX_HINTS = 2;
         let wfes = window.hint_candidates
         let num_wfes = (wfes != null) ? Object.keys(wfes).length : 0;
-
-
-        /*
-                - [ ]  Number of failures for a hint: We currently allow for **up to 2 `mark`**s in a feature vector when showing a hint. This seems the obvious place for a scale up, and the most impactful.
-          - Or have some common sub-fingerprints as candidates as well.
-              - Prioritize these sub-fingerprints if they subsume a candidate.
-              - Now provide hints if the number of sub-fingerprints + fingerprints matched is 2/3 rather than feature vector positions.
-        */
 
         let failing_test_ids = Object.keys(wfes);
         let candidate_chaffs = failing_test_ids.reduce((acc, k) => {
@@ -248,31 +218,8 @@
         }
 
 
-
-        /*
-          Show up to MAX_HINTS hints. 
-          Prioritize larger hints, 
-          Do not show hints that are subsumed by a larger hint set.
-
-          This would be easier if we could use sets as keys in JS objects.
-        */
-        /*
-         Algorithm:
-           Find the largest common subset of chaffs that pass.
-           (TODO: If there is no common subset, have to determine what next.)
-           
-           Find the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
-           and the powerset of the largest common subset of chaffs that pass.
- 
- 
-           Choose the MAX_HINTS largest, disjoint intersections between the hints from the chaffs
- 
-        */
-
-        // TODO: Change everything below.
-
+        /// Find the largest common subset of chaffs that pass.
         let chaff_fingerprints = Object.values(candidate_chaffs);
-        // Now I want to get the most common combinations of chaffs that pass.
         function findLargestCommonSubset(chaff_fingerprints) {
           if (chaff_fingerprints.length === 0) return [];
 
@@ -313,12 +260,10 @@
 
         }
 
-
+        ///// TRY GENERATE A TEST SUITE WIDE HINT /////
         /*
-          Now, we want to find the most applicable hint.
           Ideally, this would be the largest common subset of chaff_set_to_hint that has a hint.
-          If there is no common subset (ie everything is disjoint),
-          chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
+          If there is no common subset (ie everything is disjoint), chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
         */
 
         let test_suite_wide_hints = []
@@ -337,7 +282,7 @@
           }
         }
 
-        test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
+
 
 
         if (test_suite_wide_hints.length > 0) {
@@ -347,13 +292,12 @@
              Or NOT return if MAX_SIZE is not respected?
     
           */
+             test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
+             const highestNumMatched = test_suite_wide_hints[0].num_matched;
+             const highestHints = test_suite_wide_hints.filter(hint => hint.num_matched === highestNumMatched);
 
-
-          // Allow for scenarios where the text of two hints might be the same?
-          // ehh think about it, not as urgent.
-
-          return test_suite_wide_hints[0].hint_html;
-
+             let consolidated_hints = highestHints.slice(0, MAX_HINTS).map(hint => hint.hint_html);
+             return consolidated_hints.join(" ");
         }
 
         /* 
