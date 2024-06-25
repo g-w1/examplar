@@ -196,7 +196,7 @@
 
     function getHint() {
 
-
+      console.log("Calling getHint")
       //// SP: TODO: THIS IS MISLEADING AND PROBABLY SHOULD BE FIXED!!!
       const DEFAULT_TEXT = "Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
       const HINT_PREFIX = "<h3>Hint</h3>";
@@ -249,13 +249,13 @@
               ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
               : chaff_metadata['hint'];
           let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
-        ${hint_text}
-        <div class="text-right text-muted">
-        <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
-        <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
-        </div>
-      </div>
-      <br>`;
+                              ${hint_text}
+                              <div class="text-right text-muted">
+                              <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
+                              <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
+                              </div>
+                            </div>
+                            <br/>`;
           return hint_html;
 
         }
@@ -275,7 +275,7 @@
 
           if (isSubset) {
             let hint_html = getHTMLforHint(hint);
-            test_suite_wide_hints.append({
+            test_suite_wide_hints.push({
               "num_matched": hint_set.length,
               "hint_html": hint_html
             })
@@ -286,7 +286,6 @@
              test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
              const highestNumMatched = test_suite_wide_hints[0].num_matched;
              const highestHints = test_suite_wide_hints.filter(hint => hint.num_matched === highestNumMatched);
-
              let consolidated_hints = highestHints.slice(0, MAX_HINTS).map(hint => hint.hint_html);
              return consolidated_hints.join(" ");
         }
@@ -303,8 +302,6 @@
             yield [];
           } else {
             for (let i = 0; i <= array.length - k; i++) {
-              // For each element in the array, yield all combinations that include this element
-              // and k-1 more elements from the rest of the array.
               const first = array[i];
               for (let next of combinations(array.slice(i + 1), k - 1)) {
                 yield [first, ...next];
