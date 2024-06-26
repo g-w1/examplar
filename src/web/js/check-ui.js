@@ -204,19 +204,37 @@
 
       function get_hint_text() {
         const MAX_HINTS = 2;
+
+
         let wfes = window.hint_candidates
+
+
+        console.log("Hint candidates", wfes);
+
         let num_wfes = (wfes != null) ? Object.keys(wfes).length : 0;
+        if (num_wfes == 0) {
+          // TODO: Remove
+          console.log("No hint candidates found.")
+
+          return DEFAULT_TEXT;
+        }
 
         let failing_test_ids = Object.keys(wfes);
+
+        if (failing_test_ids.length == 0) {
+          console.log("No failing tests found.")
+          return DEFAULT_TEXT;
+        }
+        
         let candidate_chaffs = failing_test_ids.reduce((acc, k) => {
           acc[k] = wfes[k];
           return acc;
         }, {});
 
-        if (num_wfes == 0 || Object.keys(candidate_chaffs).length == 0) {
+        if (Object.keys(candidate_chaffs).length == 0) {
           return DEFAULT_TEXT;
         }
-
+        console.log("Candidate chaffs", candidate_chaffs);
 
         /// Find the largest common subset of chaffs that pass.
         let chaff_fingerprints = Object.values(candidate_chaffs);
@@ -236,18 +254,29 @@
         }
         let chaff_set_to_hint = findLargestCommonSubset(chaff_fingerprints);
 
+
+
+
         function commaSeparatedStringToSet(str) {
+          if (typeof str !== 'string') {
+            console.error('Input is not a string:', str);
+            return new Set(); // Return an empty set if the input is not a string
+          }
           return new Set(str.split(',').map(item => item.trim()));
+        }
+        
+
+        function getHintFromMetadata(chaff_metadata) {
+          (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
+          ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
+          : chaff_metadata['hint'];
         }
 
         function getHTMLforHint(key) {
 
           c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
           let chaff_metadata = window.hints[key];
-          let hint_text =
-            (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
-              ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
-              : chaff_metadata['hint'];
+          let hint_text = getHintFromMetadata(chaff_metadata);
           let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
                               ${hint_text}
                               <div class="text-right text-muted">
@@ -290,6 +319,9 @@
              return consolidated_hints.join(" ");
         }
 
+
+        console.log("Now trying to find per test hints")
+
         /////// Per Test Hints ///////
 
         /* 
@@ -310,18 +342,21 @@
           }
         }
 
-        let xs = [...Object.values(window.chaffs).map(x => commaSeparatedStringToSet(x))];
+
+
+        let xs = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
         for (var k = 2; k <= MAX_HINTS; k++) {
           for (let combo of combinations(xs, k)) {
             let isValidCombo = true;
             for (var cf of chaff_fingerprints) {
-              let markedChaffs = commaSeparatedStringToSet(cf);
-              let atLeastOneMatch = combo.any((c) => {
+              let markedChaffs = new Set(cf);
+
+              let atLeastOneMatch = combo.some((c) => {
                 return (c.size == markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
               });
         
               if (!atLeastOneMatch) {
-                isValidCombo = false; // Mark combo as invalid and break the current loop
+                isValidCombo = false;
                 break;
               }
             }
@@ -359,6 +394,7 @@
       }
       catch (e) {
         console.error('Error generating hint:', e)
+        console.log("Error generating hint:", e);
         container.innerHTML = "Something went wrong, failed to find a hint.";
       }
       finally {
