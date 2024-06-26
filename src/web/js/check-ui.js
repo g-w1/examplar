@@ -196,11 +196,8 @@
 
     function getHint() {
 
-      console.log("Calling getHint")
-      //// SP: TODO: THIS IS MISLEADING AND PROBABLY SHOULD BE FIXED!!!
-      const DEFAULT_TEXT = "Examplar was unable to find a hint. This is sometimes indicative of a typo in your invalid test — please double check!";
+      const DEFAULT_TEXT = "🙁 Examplar was unable to find a hint related to your tests 🙁";
       const HINT_PREFIX = "<h3>Hint</h3>";
-
 
       function get_hint_text() {
         const MAX_HINTS = 2;
@@ -575,23 +572,9 @@
               c.classList += ["container-fluid"];
               c.id = "hint_box";
 
-
-              // SP: TODO: we should support more than one wfe
-              // c.innerHTML = (num_wfe == 1)  ?
-              //   ` <div class="card-body> 
-              //         <p class="card-text">
-              //           The system <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
-              //           <button id='hint_button' class="btn btn-success" onclick="window.gen_hints()"> Try to find a hint! </button>
-              //           </p> </div>`
-              // : `<div class="card-body> <p class="card-text">
-              //   There are currently too many invalid tests to provide further feedback.
-              //   The system may be able to provide more directed feedback
-              //   when there is exactly one invalid test. </p>    
-              //   </p> </div>`;
-
               c.innerHTML = ` <div class="card-body> 
                     <p class="card-text">
-                      The system <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
+                      Examplar <em>may</em> be able to provide a hint about why this test is invalid.<br><br>
                       <button id='hint_button' class="btn btn-success" onclick="window.gen_hints()"> Try to find a hint! </button>
                       </p> </div>`;
 
