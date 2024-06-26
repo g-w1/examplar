@@ -204,40 +204,21 @@
 
       function get_hint_text() {
         const MAX_HINTS = 2;
+        let hint_candidates = window.hint_candidates
 
-
-        let wfes = window.hint_candidates
-
-
-        console.log("Hint candidates", wfes);
-
-        let num_wfes = (wfes != null) ? Object.keys(wfes).length : 0;
-        if (num_wfes == 0) {
-          // TODO: Remove
-          console.log("No hint candidates found.")
-
+        let num_hint_candidates = (hint_candidates != null) ? Object.keys(hint_candidates).length : 0;
+        if (num_hint_candidates == 0) {
           return DEFAULT_TEXT;
         }
-
-        let failing_test_ids = Object.keys(wfes);
+        let failing_test_ids = Object.keys(hint_candidates);
 
         if (failing_test_ids.length == 0) {
-          console.log("No failing tests found.")
+          console.err("Something went very wrong. No failing tests found.")
           return DEFAULT_TEXT;
         }
         
-        let candidate_chaffs = failing_test_ids.reduce((acc, k) => {
-          acc[k] = wfes[k];
-          return acc;
-        }, {});
-
-        if (Object.keys(candidate_chaffs).length == 0) {
-          return DEFAULT_TEXT;
-        }
-        console.log("Candidate chaffs", candidate_chaffs);
-
         /// Find the largest common subset of chaffs that pass.
-        let chaff_fingerprints = Object.values(candidate_chaffs);
+        let chaff_fingerprints = Object.values(hint_candidates);
         function findLargestCommonSubset(chaff_fingerprints) {
           if (chaff_fingerprints.length === 0) return [];
 
@@ -253,9 +234,6 @@
           return commonElements;
         }
         let chaff_set_to_hint = findLargestCommonSubset(chaff_fingerprints);
-
-
-
 
         function commaSeparatedStringToSet(str) {
           if (typeof str !== 'string') {
@@ -319,9 +297,6 @@
              return consolidated_hints.join(" ");
         }
 
-
-        console.log("Now trying to find per test hints")
-
         /////// Per Test Hints ///////
 
         /* 
@@ -342,11 +317,9 @@
           }
         }
 
-
-
-        let xs = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
+        let marked_sets_with_hints = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
         for (var k = 2; k <= MAX_HINTS; k++) {
-          for (let combo of combinations(xs, k)) {
+          for (let combo of combinations(marked_sets_with_hints, k)) {
             let isValidCombo = true;
             for (var cf of chaff_fingerprints) {
               let markedChaffs = new Set(cf);
