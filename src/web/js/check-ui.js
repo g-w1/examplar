@@ -201,7 +201,7 @@
 
       function get_hint_text() {
         const MAX_HINTS = 2;
-        let hint_candidates = window.hint_candidates
+        let hint_candidates = window.hint_candidates;
 
         let num_hint_candidates = (hint_candidates != null) ? Object.keys(hint_candidates).length : 0;
         if (num_hint_candidates == 0) {
@@ -242,21 +242,42 @@
         
 
         function getHintFromMetadata(chaff_metadata) {
-          (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
-          ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
-          : chaff_metadata['hint'];
+
+          if (!chaff_metadata) {
+            return "Something went wrong generating hint."
+          }
+
+          const backCompat = (typeof chaff_metadata === 'string' || chaff_metadata instanceof String);
+
+          // Backcompat: In 2022, there was no chaff metadata.
+          if(backCompat) {
+            console.log("Backcompat: ", chaff_metadata);
+            return chaff_metadata;
+          }
+
+          let hint = chaff_metadata['hint'];
+          
+          if (hint) {
+            return hint;
+          }
+          console.log("No hint found in metadata", chaff_metadata);
+          return "Something went wrong generating hint."
         }
 
         function getHTMLforHint(key) {
 
-          c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
+
+          let vote_id = key.replace(/,/g, "_");
+
           let chaff_metadata = window.hints[key];
           let hint_text = getHintFromMetadata(chaff_metadata);
+
+
           let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
                               ${hint_text}
                               <div class="text-right text-muted">
-                              <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
-                              <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
+                              <button class="hint_upvote" id="hint_upvote_${vote_id}" onclick="window.vote(this)" >👍</button>
+                              <button class="hint_downvote" id="hint_downvote_${vote_id}" onclick="window.vote(this)">👎</button>
                               </div>
                             </div>
                             <br/>`;
@@ -270,6 +291,8 @@
           If there is no common subset (ie everything is disjoint), chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
         */
 
+        console.log("Trying to generate hints applicable to the entire test suite.");
+
         let test_suite_wide_hints = []
 
         for (var hint in window.hints) {
@@ -280,13 +303,14 @@
           if (isSubset) {
             let hint_html = getHTMLforHint(hint);
             test_suite_wide_hints.push({
-              "num_matched": hint_set.length,
+              "num_matched": hint_set.size,
               "hint_html": hint_html
             })
           }
         }
 
         if (test_suite_wide_hints.length > 0) {
+            
              test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
              const highestNumMatched = test_suite_wide_hints[0].num_matched;
              const highestHints = test_suite_wide_hints.filter(hint => hint.num_matched === highestNumMatched);
@@ -295,11 +319,19 @@
         }
 
         /////// Per Test Hints ///////
-
+        function areSetsEqual(setA, setB) {
+          if (setA.size !== setB.size) return false;
+          for (let a of setA) {
+            if (!setB.has(a)) return false;
+          }
+          return true;
+        }
         /* 
           If there are no test suite wide hints, we have to  now see if there are hints that can cover the failing tests?
           That is, are there at most MAX_HINT hints that cover all test failures.
         */
+
+        console.log("Now focusing on individual tests, since we could not generate hints applicable to the entire test suite.");
 
         function* combinations(array, k) {
           if (k === 0) {
@@ -315,14 +347,24 @@
         }
 
         let marked_sets_with_hints = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
+
         for (var k = 2; k <= MAX_HINTS; k++) {
+          
           for (let combo of combinations(marked_sets_with_hints, k)) {
+
+            // Combo contains K hints, we need to check if it covers all failing tests.
+            // That is, each key in combo should have a hint that covers a failing test.
+            // If the union of all hints in combo covers all failing tests, we have a valid combo.
+
             let isValidCombo = true;
             for (var cf of chaff_fingerprints) {
+              
+              // Set of chaffs that hints should cover.
               let markedChaffs = new Set(cf);
 
+              // That is. An element of combo should match an element of chaff_fingerprints.
               let atLeastOneMatch = combo.some((c) => {
-                return (c.size == markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
+                return (c.size <= markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
               });
         
               if (!atLeastOneMatch) {
@@ -332,7 +374,20 @@
             }
         
             if (isValidCombo) {
-              return combo.map(hint => getHTMLforHint(hint)).join("");
+              return combo.map(hint => 
+                {
+
+                  let hint_keys = Object.keys(window.hints);
+
+                  for (var key of hint_keys) {
+                    let hint_set = commaSeparatedStringToSet(key);
+                    if (areSetsEqual(hint, hint_set)) {
+                      return getHTMLforHint(key);
+                    }
+                  }
+
+                  
+                });
             }
           }
         }
