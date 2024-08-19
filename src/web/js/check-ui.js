@@ -243,6 +243,10 @@
 
         function getHintFromMetadata(chaff_metadata) {
 
+          if (!chaff_metadata) {
+            return "Something went wrong generating hint."
+          }
+
           const backCompat = (typeof chaff_metadata === 'string' || chaff_metadata instanceof String);
 
           // Backcompat: In 2022, there was no chaff metadata.
@@ -263,8 +267,7 @@
         function getHTMLforHint(key) {
 
 
-          //c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
-
+          let vote_id = key.replace(/,/g, "_");
 
           let chaff_metadata = window.hints[key];
           let hint_text = getHintFromMetadata(chaff_metadata);
@@ -273,8 +276,8 @@
           let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
                               ${hint_text}
                               <div class="text-right text-muted">
-                              <button class="hint_upvote" id="hint_upvote_${c}" onclick="window.vote(this)" >👍</button>
-                              <button class="hint_downvote" id="hint_downvote_${c}" onclick="window.vote(this)">👎</button>
+                              <button class="hint_upvote" id="hint_upvote_${vote_id}" onclick="window.vote(this)" >👍</button>
+                              <button class="hint_downvote" id="hint_downvote_${vote_id}" onclick="window.vote(this)">👎</button>
                               </div>
                             </div>
                             <br/>`;
@@ -298,8 +301,6 @@
 
           let hint_set = commaSeparatedStringToSet(hint);
 
-          console.log("hint_set", hint_set);
-
           let isSubset = [...hint_set].every(e => chaff_set_to_hint.has(e));
 
           if (isSubset) {
@@ -322,7 +323,13 @@
         }
 
         /////// Per Test Hints ///////
-
+        function areSetsEqual(setA, setB) {
+          if (setA.size !== setB.size) return false;
+          for (let a of setA) {
+            if (!setB.has(a)) return false;
+          }
+          return true;
+        }
         /* 
           If there are no test suite wide hints, we have to  now see if there are hints that can cover the failing tests?
           That is, are there at most MAX_HINT hints that cover all test failures.
@@ -345,14 +352,28 @@
 
         let marked_sets_with_hints = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
         console.log("Marked sets with hints", marked_sets_with_hints);
+        console.log("Chaff fingerprints", chaff_fingerprints );
+
         for (var k = 2; k <= MAX_HINTS; k++) {
+          
           for (let combo of combinations(marked_sets_with_hints, k)) {
+
+            // Combo contains K hints, we need to check if it covers all failing tests.
+            // That is, each key in combo should have a hint that covers a failing test.
+            // If the union of all hints in combo covers all failing tests, we have a valid combo.
+
             let isValidCombo = true;
             for (var cf of chaff_fingerprints) {
+              
+              // Set of chaffs that hints should cover.
               let markedChaffs = new Set(cf);
 
+              // That is. An element of combo should match an element of chaff_fingerprints.
+
+              
+
               let atLeastOneMatch = combo.some((c) => {
-                return (c.size == markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
+                return (c.size <= markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
               });
         
               if (!atLeastOneMatch) {
@@ -362,7 +383,20 @@
             }
         
             if (isValidCombo) {
-              return combo.map(hint => getHTMLforHint(hint)).join("");
+              return combo.map(hint => 
+                {
+
+                  let hint_keys = Object.keys(window.hints);
+
+                  for (var key of hint_keys) {
+                    let hint_set = commaSeparatedStringToSet(key);
+                    if (areSetsEqual(hint, hint_set)) {
+                      return getHTMLforHint(key);
+                    }
+                  }
+
+                  
+                });
             }
           }
         }
