@@ -291,14 +291,11 @@
           If there is no common subset (ie everything is disjoint), chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
         */
 
-        console.log("Trying test suite wide hints")
+        console.log("Trying to generate hints applicable to the entire test suite.");
 
         let test_suite_wide_hints = []
 
         for (var hint in window.hints) {
-
-          console.log("Window.hints", window.hints)
-
           let hint_set = commaSeparatedStringToSet(hint);
 
           let isSubset = [...hint_set].every(e => chaff_set_to_hint.has(e));
@@ -312,7 +309,6 @@
           }
         }
 
-        console.log("test suite wide", test_suite_wide_hints)
         if (test_suite_wide_hints.length > 0) {
             
              test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
@@ -335,7 +331,7 @@
           That is, are there at most MAX_HINT hints that cover all test failures.
         */
 
-        console.log("Trying per test hints")
+        console.log("Now focusing on individual tests, since we could not generate hints applicable to the entire test suite.");
 
         function* combinations(array, k) {
           if (k === 0) {
@@ -351,8 +347,6 @@
         }
 
         let marked_sets_with_hints = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
-        console.log("Marked sets with hints", marked_sets_with_hints);
-        console.log("Chaff fingerprints", chaff_fingerprints );
 
         for (var k = 2; k <= MAX_HINTS; k++) {
           
@@ -369,9 +363,6 @@
               let markedChaffs = new Set(cf);
 
               // That is. An element of combo should match an element of chaff_fingerprints.
-
-              
-
               let atLeastOneMatch = combo.some((c) => {
                 return (c.size <= markedChaffs.size) && [...c].every(e => markedChaffs.has(e));
               });
