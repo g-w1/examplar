@@ -201,7 +201,7 @@
 
       function get_hint_text() {
         const MAX_HINTS = 2;
-        let hint_candidates = window.hint_candidates
+        let hint_candidates = window.hint_candidates;
 
         let num_hint_candidates = (hint_candidates != null) ? Object.keys(hint_candidates).length : 0;
         if (num_hint_candidates == 0) {
@@ -242,16 +242,34 @@
         
 
         function getHintFromMetadata(chaff_metadata) {
-          (typeof chaff_metadata === 'string' || chaff_metadata instanceof String)
-          ? chaff_metadata // Backcompat: In 2022, there was no chaff metadata.
-          : chaff_metadata['hint'];
+
+          const backCompat = (typeof chaff_metadata === 'string' || chaff_metadata instanceof String);
+
+          // Backcompat: In 2022, there was no chaff metadata.
+          if(backCompat) {
+            console.log("Backcompat: ", chaff_metadata);
+            return chaff_metadata;
+          }
+
+          let hint = chaff_metadata['hint'];
+          
+          if (hint) {
+            return hint;
+          }
+          console.log("No hint found in metadata", chaff_metadata);
+          return "Something went wrong generating hint."
         }
 
         function getHTMLforHint(key) {
 
-          c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
+
+          //c = key.replace(/,/g, "_"); // Maybe we dont want underscore?
+
+
           let chaff_metadata = window.hints[key];
           let hint_text = getHintFromMetadata(chaff_metadata);
+
+
           let hint_html = `<div style="border: 1px solid #ccc; padding: 10px;">
                               ${hint_text}
                               <div class="text-right text-muted">
@@ -270,23 +288,32 @@
           If there is no common subset (ie everything is disjoint), chaff_set_to_hint will be empty, and consequently there will be no test suite wide hints.
         */
 
+        console.log("Trying test suite wide hints")
+
         let test_suite_wide_hints = []
 
         for (var hint in window.hints) {
+
+          console.log("Window.hints", window.hints)
+
           let hint_set = commaSeparatedStringToSet(hint);
+
+          console.log("hint_set", hint_set);
 
           let isSubset = [...hint_set].every(e => chaff_set_to_hint.has(e));
 
           if (isSubset) {
             let hint_html = getHTMLforHint(hint);
             test_suite_wide_hints.push({
-              "num_matched": hint_set.length,
+              "num_matched": hint_set.size,
               "hint_html": hint_html
             })
           }
         }
 
+        console.log("test suite wide", test_suite_wide_hints)
         if (test_suite_wide_hints.length > 0) {
+            
              test_suite_wide_hints.sort((a, b) => b.num_matched - a.num_matched);
              const highestNumMatched = test_suite_wide_hints[0].num_matched;
              const highestHints = test_suite_wide_hints.filter(hint => hint.num_matched === highestNumMatched);
@@ -300,6 +327,8 @@
           If there are no test suite wide hints, we have to  now see if there are hints that can cover the failing tests?
           That is, are there at most MAX_HINT hints that cover all test failures.
         */
+
+        console.log("Trying per test hints")
 
         function* combinations(array, k) {
           if (k === 0) {
@@ -315,6 +344,7 @@
         }
 
         let marked_sets_with_hints = [...Object.keys(window.hints).map(x => commaSeparatedStringToSet(x))];
+        console.log("Marked sets with hints", marked_sets_with_hints);
         for (var k = 2; k <= MAX_HINTS; k++) {
           for (let combo of combinations(marked_sets_with_hints, k)) {
             let isValidCombo = true;
