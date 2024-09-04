@@ -20,7 +20,7 @@
 2. Make folders for wheats, chaffs, and mutants that should be included in Examplar,
    note their IDs, and set them (temporarily) to be publicly accessible via link
 
-3. Load the Examplar dummy assignment (https://pyret.cs.brown.edu/assignment/1QIZ_LpROVf4yzWTlfTIJcturEyIs71u_)
+3. Load the Examplar dummy assignment [https://pyret.cs.brown.edu/assignment/1QIZ_LpROVf4yzWTlfTIJcturEyIs71u_](https://pyret.cs.brown.edu/assignment/1QIZ_LpROVf4yzWTlfTIJcturEyIs71u_)
    and open the JavaScript console. Note: The following Steps 3-6
    are to be
    done in the JS console, not in the Pyret interaction
